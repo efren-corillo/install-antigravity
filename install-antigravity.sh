@@ -276,19 +276,65 @@ main() {
 
     log_info "Copying files to $INSTALL_DIR..."
     run_cmd cp -a "$SOURCE_DIR"/. "$INSTALL_DIR"/
+    if [[ "$INSTALL_SCOPE" == "system" ]]; then
+        run_cmd chown -R root:root "$INSTALL_DIR"
+    fi
     run_cmd chmod +x "$INSTALL_DIR/$EXEC_CANDIDATE"
 
     # Create CLI Symlink
     log_info "Creating CLI symlink at $BIN_DIR/antigravity..."
     run_cmd ln -sf "$INSTALL_DIR/$EXEC_CANDIDATE" "$BIN_DIR/antigravity"
 
-    # Locate application icon (PNG or SVG)
+    # Locate application icon (loose PNG or extracted from resources/app.asar)
     ICON_SOURCE="$(find "$INSTALL_DIR" -maxdepth 4 -type f \( -iname "*antigravity*.png" -o -iname "icon.png" -o -iname "app.png" \) | head -n 1)"
     ICON_VALUE="antigravity"
 
     if [[ -n "$ICON_SOURCE" ]]; then
         log_info "Installing application icon..."
         run_cmd cp "$ICON_SOURCE" "$ICON_DIR/antigravity.png"
+    elif [[ -f "$INSTALL_DIR/resources/app.asar" ]] && command -v python3 >/dev/null 2>&1; then
+        EXTRACTED_ICON="$TMP_DIR/antigravity-icon.png"
+        if python3 - "$INSTALL_DIR/resources/app.asar" "$EXTRACTED_ICON" <<'PYEOF'
+import json, struct, sys
+
+asar_path, out_path = sys.argv[1], sys.argv[2]
+with open(asar_path, "rb") as f:
+    f.seek(4)
+    header_size = struct.unpack("<I", f.read(4))[0]
+    f.seek(12)
+    json_len = struct.unpack("<I", f.read(4))[0]
+    header = json.loads(f.read(json_len).decode("utf-8"))
+    base_offset = 8 + header_size
+
+    def find_icon(node):
+        files = node.get("files", {})
+        for name in ("icon.png", "app.png"):
+            if name in files and "offset" in files[name]:
+                return files[name]
+        for v in files.values():
+            if "files" in v:
+                res = find_icon(v)
+                if res:
+                    return res
+        return None
+
+    entry = find_icon(header)
+    if not entry:
+        sys.exit(1)
+    f.seek(base_offset + int(entry["offset"]))
+    data = f.read(int(entry["size"]))
+
+with open(out_path, "wb") as out:
+    out.write(data)
+PYEOF
+        then
+            log_info "Extracted application icon from app.asar..."
+            run_cmd cp "$EXTRACTED_ICON" "$ICON_DIR/antigravity.png"
+            run_cmd chmod 644 "$ICON_DIR/antigravity.png"
+        else
+            log_warn "No PNG icon found in archive or app.asar; using fallback icon reference."
+            ICON_VALUE="utilities-terminal"
+        fi
     else
         log_warn "No PNG icon found in archive; using fallback icon reference."
         ICON_VALUE="utilities-terminal"
@@ -331,7 +377,7 @@ Icon=$ICON_VALUE
 Type=Application
 StartupNotify=true
 StartupWMClass=Antigravity
-Categories=Utility;TextEditor;Development;IDE;
+Categories=Development;IDE;TextEditor;
 MimeType=text/plain;inode/directory;
 Actions=new-empty-window;
 Keywords=antigravity;code;editor;ide;
