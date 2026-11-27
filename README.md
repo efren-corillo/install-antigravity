@@ -14,7 +14,8 @@ Unlike wrapper scripts that fetch unverified remote payloads during execution, `
   - **User-local (`--user`):** Installs to `~/Applications/antigravity` with CLI symlink in `~/.local/bin/antigravity`.
 - **Smart Archive Discovery:** Pass the path to your `.tar.gz` directly, or omit it to let the script automatically find it in your current directory or `~/Downloads`.
 - **Ubuntu 26.04 LTS Sandbox Compatibility:** Automatically configures an `/etc/apparmor.d/antigravity` profile for system-wide installs so Electron/Chromium unprivileged user namespaces (`userns`) work out of the box.
-- **Full Desktop Integration:** Installs the application icon, registers the `.desktop` launcher entry (with "New Empty Window" quick action), and updates desktop/icon caches.
+- **Full Desktop Integration:** Installs the application icon (including automatic extraction from `resources/app.asar` when no loose PNG is present), registers the `.desktop` launcher entry (with "New Empty Window" quick action), and updates desktop/icon caches.
+- **Companion IDE Installer (`install-antigravity-ide.sh`):** Includes a system-wide installer for **Antigravity IDE** (`/opt/antigravity-ide`) with its own distinct icon, CLI symlink (`/usr/local/bin/antigravity-ide`), and `.desktop` entry so both apps can coexist cleanly.
 - **Clean Uninstaller:** Includes a `--uninstall` flag to cleanly remove all installed files, symlinks, desktop entries, and AppArmor profiles.
 
 ---
@@ -95,6 +96,18 @@ Simply run the installer again with the new `.tar.gz` archive and the same scope
 
 ---
 
+## Antigravity IDE Installer (`install-antigravity-ide.sh`)
+
+To install or upgrade **Antigravity IDE** system-wide from a staged extract (separate from the Antigravity app):
+
+```bash
+sudo bash ./install-antigravity-ide.sh
+```
+
+This backs up any existing `/opt/antigravity-ide` directory, installs the new build with `root:root` ownership and `4755` permissions on `chrome-sandbox`, creates `/usr/local/bin/antigravity-ide`, installs `/usr/share/icons/hicolor/512x512/apps/antigravity-ide.png`, and registers `/usr/share/applications/antigravity-ide.desktop`.
+
+---
+
 ## Uninstalling
 
 To cleanly remove Antigravity and all associated desktop/system files:
@@ -109,6 +122,12 @@ To cleanly remove Antigravity and all associated desktop/system files:
 
 ---
 
+## Disclaimer
+
+This is an **unofficial community installer** and is not affiliated with, endorsed by, or sponsored by Google or the Antigravity team. All product names, logos, icons, and trademarks are the property of their respective owners. This repository does not host or redistribute any Antigravity binaries, archives, or assets—all installation scripts operate strictly on local files supplied by the user.
+
+---
+
 ## License
 
-This installer script is released into the public domain / MIT License for community use.
+The installer scripts and documentation in this repository are licensed under the [MIT License](LICENSE).
